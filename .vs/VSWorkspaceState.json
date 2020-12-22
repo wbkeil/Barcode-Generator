@@ -1,6 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\Barcode"
   ],
+  "SelectedNode": "\\Barcode\\Barcode.py",
   "PreviewInSolutionExplorer": false
 }
