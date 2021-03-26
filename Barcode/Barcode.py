@@ -1,60 +1,67 @@
 import barcode
+import datetime
 from barcode import Code128
 from barcode.writer import ImageWriter
+import os.path
+from os import path
 import tkinter as tk
 from tkinter import Tk
 from tkinter import messagebox
+from tkinter.filedialog import askopenfilename
 from tkinter.filedialog import askdirectory
 
-prefix = 0
-start = 0
-end = 0
 pathToFile = ''
+saveDirectory = ''
 
 def __main__():
-    getRangeInfo()
-    getFilePath()
+    pathToFile = getFilePath()
+    print('Beginning processing...')
     generateBarcodes()
+    print('Program complete"')
 
-
-def getRangeInfo():  
-    def getInfo():
-        global prefix, start, end
-        prefix = int(prefixEntry.get())
-        start = int(startEntry.get())
-        end = int(endEntry.get()) + 1 #To include entire range
-
-    window = tk.Tk()
-
-    prefixLabel = tk.Label(window, text="Prefix").grid(row=0)
-    startLabel = tk.Label(window, text="Start Range").grid(row=1)
-    endLabel = tk.Label(window, text="End Range").grid(row=2)
-
-    prefixEntry = tk.Entry(window)
-    startEntry = tk.Entry(window)
-    endEntry = tk.Entry(window)
-
-    prefixEntry.grid(row=0, column=1)
-    startEntry.grid(row=1, column=1)
-    endEntry.grid(row=2, column=1)
-
-    button = tk.Button(window,text = "Generate", command=lambda:[getInfo(), window.quit()]).grid(row=3)
-
-    
-
-    window.mainloop()
 
 def getFilePath():
-    global pathToFile
-    print("Please choose the location you would like the files saved to...")
+    global pathToFile, saveDirectory
+    print("Please choose the file...")
     Tk().withdraw()
-    pathToFile = askdirectory()
+    pathToFile = askopenfilename()
+    print("Choose where to save images...")
+    saveDirectory = askdirectory()
+
 
 def generateBarcodes():
-    for barcodes in range (start, end):
-        fileName = str(prefix) + str(barcodes).zfill(4) #zfill(4) guarantees that if start or end are < 1000, we have padded 0s
-        with open(pathToFile + '/' + fileName + '.png', 'wb') as barcodeFile:
-            print('Writing barcode #' + str(fileName) + '.....')
-            Code128(fileName, writer=ImageWriter()).write(barcodeFile)
+    processed = 0
+    global pathToFile, saveDirectory
+    errorList = []
+    with open(pathToFile) as csv:
+        #record[0] = name
+        #record[1] = store
+        #record[2] = region
+       for item in csv:
+           record = item.split(',')
+           barcodeNumber = record[0].strip() + record[2].zfill(15) + '-' + record[1].strip()
+           barcodeText = record[0].strip() + ' ' + record[2].strip() + '-' + record[1].strip()
+           fileName = record[2].strip() + '-' + record[1].strip() + ' ' + record[0].strip()
+           try:
+               #If the barcode already exists in the folder, we won't waste time reprocessing it
+               if(path.exists(saveDirectory + '/' + fileName + '.png')):
+                   print('Barcode already generated for ' + fileName)
+               else:
+                   with open(saveDirectory + '/' + fileName + '.png', 'wb') as barcodeFile:
+                       Code128(barcodeNumber, writer=ImageWriter()).write(barcodeFile, text=barcodeText) 
+                       processed = processed + 1
+           except:
+               print('Error processing ' + fileName)
+               errorList.append(record)
+       print('Processing complete. Processed ' + str(processed))
+    if errorList:
+        print('Writing error log...')
+        with open(saveDirectory + '/errors.txt', 'a') as errorLog:
+            errorLog.write('-----ERROR LOG-----\n' + str(datetime.datetime.now()) + '\n--------------\n')
+            for record in errorList:
+                for part in record:
+                    errorLog.write(part)
+                errorLog.write('\n')
+
 
 __main__()
